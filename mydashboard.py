@@ -1,7 +1,9 @@
 import streamlit as st
-# Import ไฟล์จากห้อง views มาใช้งาน
+
+from views import Home
 from views import US_stocks
 from views import Funds
+
 
 st.set_page_config(
     page_title="Wealth Command Center",
@@ -16,7 +18,7 @@ st.title("🏥 Dr. Bew's Wealth Command Center")
 tab1, tab2, tab3 = st.tabs(["Home","US Stocks", "Funds"])
 
 with tab1:
-    st.title("Home Dashboard")
+    Home.main()
 with tab2:
     try:
         US_stocks.main() 
