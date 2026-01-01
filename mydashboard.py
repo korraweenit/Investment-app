@@ -1,5 +1,7 @@
-# Home.py
 import streamlit as st
+# Import ไฟล์จากห้อง views มาใช้งาน
+from views import US_stocks
+from views import Funds
 
 st.set_page_config(
     page_title="Wealth Command Center",
@@ -7,15 +9,23 @@ st.set_page_config(
     layout="wide"
 )
 
+# ส่วนหัวของ Dashboard
 st.title("🏥 Dr. Bew's Wealth Command Center")
-st.markdown("### Welcome back, Doctor!")
-st.markdown("---")
 
-col1, col2 = st.columns(2)
-with col1:
-    st.success("🇺🇸 **US Stocks**\n\nติดตามพอร์ตหุ้นอเมริกา เปรียบเทียบ SP500")
-    st.page_link("pages/1_US_stocks.py", label="Go to US Stocks")
+# --- สร้าง Tabs (พระเอกของเรา) ---
+tab1, tab2, tab3 = st.tabs(["Home","US Stocks", "Funds"])
 
-with col2:
-    st.info("🇹🇭 **Mutual Funds**\n\nติดตามกองทุนรวมไทย (Coming Soon)")
-    st.page_link("pages/2_Funds.py", label="Go to Funds")
+with tab1:
+    st.title("Home Dashboard")
+with tab2:
+    try:
+        US_stocks.main() 
+    except Exception as e:
+        st.error(f"เกิดข้อผิดพลาดในการโหลดหน้าหุ้น: {e}")
+        st.info("💡 อย่าลืมแก้ไฟล์ us_stock.py ให้มี def show(): ครอบโค้ดไว้นะครับ")
+
+with tab3:
+    try:
+        Funds.show()
+    except Exception as e:
+        st.warning("หน้านี้กำลังพัฒนาครับ (Waiting for Thai Funds code)")

@@ -8,7 +8,8 @@ from datetime import timedelta
 import datetime
 import utils
 
-st.set_page_config(page_title="Wealth Command Center", layout="wide")
+# st.set_page_config(page_title="Wealth Command Center", layout="wide")
+
 
 # ===========================
 # DATA 
@@ -187,7 +188,7 @@ def display_Hxchart_button(rebalance_df):
 # MAIN APP
 # ===========================
 def main():
-    st.title("US stock Dashboard")
+    st.title("US stock")
     st.markdown("---")
     
     df = load_data()
