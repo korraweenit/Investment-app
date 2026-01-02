@@ -2,9 +2,10 @@
 import streamlit as st
 import utils # เรียกใช้สมองกลาง
 
-st.set_page_config(page_title="Mutual Funds", layout="wide")
+def show():
+    st.set_page_config(page_title="Mutual Funds", layout="wide")
 
-st.title("🇹🇭 Thai Mutual Funds")
-st.info("🚧 Work in Progress: เตรียมพบกับระบบติดตามกองทุนเร็วๆ นี้")
+    st.title("Thai Mutual Funds")
+    st.info("🚧 Work in Progress: เตรียมพบกับระบบติดตามกองทุนเร็วๆ นี้")
 
 

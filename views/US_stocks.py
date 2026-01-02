@@ -188,7 +188,7 @@ def display_Hxchart_button(rebalance_df):
 # ===========================
 # MAIN APP
 # ===========================
-def main():
+def show():
     st.title("US stock")
     st.markdown("---")
     
@@ -206,8 +206,6 @@ def main():
     
     display_Hxchart_button(df)
 
-if __name__ == "__main__":
-    main() 
-    
+
 
 
