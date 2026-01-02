@@ -14,7 +14,7 @@ import utils
 # ===========================
 # DATA 
 # ===========================
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=60)
 def load_data():
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(worksheet="rebalance", skiprows=14)
@@ -165,16 +165,16 @@ def display_Hxchart(rebalance_df):
 
         fig=px.line(plot_df,
             x='Date',
-            y=['myport_%','sp500_%','cost_%'],
-            color_discrete_map={'myport_%': '#00CC96','sp500_%': '#EF553B', 'cost_%': '#7F7F7F'  }              
+            y=['myport_%','sp500_%'],
+            color_discrete_map={'myport_%': '#00CC96','sp500_%': '#EF553B',   }              
         )
-        # fig.add_hline(y=0, line_dash="dash", line_color="gray")
+        fig.add_hline(y=0, line_dash="dash", line_color="gray")
         st.plotly_chart(fig, use_container_width=True)
 
     #display
     col1,col2=st.columns([3,1])
     with col1:
-        st.info("💡 Tip: กรอก Transaction ให้ครบก่อนกดอัปเดตนะครับ")
+        st.info("💡 Tip: Please fill the transactions before update")
     with col2:
         update_btn=st.button("💾 Update Data",type='primary',use_container_width=True)
     if update_btn:

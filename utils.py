@@ -41,7 +41,7 @@ def update_portfolio_hx(current_value, current_total_cost, transactions_df,hx_sh
     trans['Date']=pd.to_datetime(trans['Date']).dt.tz_localize(None)
     trans=trans[trans['Date']> date_1]
 
-    spy_data=yf.download('SPY', start=date_1, end=datetime.now()+timedelta(days=1), progress=False)['Close']
+    spy_data=yf.download('SPY', start=date_1, end=datetime.now()+timedelta(days=1), progress=False)
     if isinstance(spy_data.columns, pd.MultiIndex):
         # แบบซับซ้อน (MultiIndex)
         spy_price_df = spy_data['Close']['SPY'] 
