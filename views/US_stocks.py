@@ -11,7 +11,6 @@ import utils
 
 # st.set_page_config(page_title="Wealth Command Center", layout="wide")
 
-
 # ===========================
 # DATA 
 # ===========================
@@ -147,7 +146,7 @@ def display_graph(df):
         type_fig=create_comparechart(df)
         st.plotly_chart(type_fig, use_container_width=True)
 #sp500
-def display_Hxchart_button(rebalance_df):
+def display_Hxchart(rebalance_df):
     def display_Hxchart(hx_df):
         st.subheader("📈 My Portfolio vs S&P 500")
         if len(hx_df)<2:
@@ -158,11 +157,11 @@ def display_Hxchart_button(rebalance_df):
 
         myport_1=plot_df['My_Stock_Value'].iloc[0]
         sp500_1=plot_df['Strategy_SP500_Value'].iloc[0]
-        cost_1=plot_df['My_Cost'].iloc[0]
+        cost_1=plot_df['My_Stock_Cost'].iloc[0]
 
         plot_df['myport_%']=((plot_df['My_Stock_Value']-myport_1)/myport_1)*100
         plot_df['sp500_%']=((plot_df['Strategy_SP500_Value']-sp500_1)/sp500_1)*100
-        plot_df['cost_%']=((plot_df['My_Cost']-cost_1)/cost_1)*100
+        plot_df['cost_%']=((plot_df['My_Stock_Cost']-cost_1)/cost_1)*100
 
         fig=px.line(plot_df,
             x='Date',
@@ -204,7 +203,7 @@ def show():
     display_graph(df)
     st.markdown("---")
     
-    display_Hxchart_button(df)
+    display_Hxchart(df)
 
 
 

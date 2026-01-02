@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
 
 # -------------------------------------------------------
@@ -17,6 +18,17 @@ def load_data():
     for col in cols_to_num:
         df[col] = pd.to_numeric(df[col].astype(str).str.replace(',', ''), errors='coerce')
         
+    return df
+
+# -------------------------------------------------------
+# Load History Data (เพื่อวาดกราฟ)
+# -------------------------------------------------------
+@st.cache_data(ttl=600)
+def load_history_data():
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    df = conn.read(worksheet="Portfolio_Hx") 
+    if 'Date' in df.columns:
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
     return df
 
 # -------------------------------------------------------
@@ -105,15 +117,80 @@ def show():
     total_profit = total_value - total_invest
     total_profit_pct = (total_profit / total_invest * 100) if total_invest != 0 else 0
     
+    fund_value=df[df['AssetName']=='💵 Fund']['Value'].iloc[0]
+    fund_invest=df[df['AssetName']=='💵 Fund']['Invest'].iloc[0]
+
+    stock_value=df[df['AssetName']=='🚀 US stock']['Value'].iloc[0]
+    stock_invest=df[df['AssetName']=='🚀 US stock']['Invest'].iloc[0]
     for item in asset_items:
         pct = (item['value'] / total_value * 100) if total_value != 0 else 0
         item['percent'] = pct
-        # สร้าง Label สำหรับกราฟวงกลม (ชื่อ + %)
         item['label'] = f"{item['name']} ({pct:.1f}%)"
 
-    # --- 🏠 Display Section ---
-    st.markdown("### 🚀 Portfolio Overview")
+    # ---------------------------
+    #   🏠 Display Section 
+    # ---------------------------
+    
+    #Display Head
+    col_head1, col_head2 = st.columns([3, 1])
+    with col_head1:
+        st.markdown("### 🚀 Portfolio Overview")
+    with col_head2:
+        # ปุ่มกดอัปเดต 
+        if st.button("💾 Update "):
+            with st.spinner("Saving Total to History..."):
+                try:
+                    conn = st.connection("gsheets", type=GSheetsConnection)
+                    current_history = conn.read(worksheet="Portfolio_Hx")
+                    current_history['Date'] = pd.to_datetime(current_history['Date'], errors='coerce')
 
+                    today_str = datetime.now().strftime("%Y-%m-%d")
+
+                    # 2. เช็คว่า "วันนี้" มีข้อมูลหรือยัง?
+                    # ค้นหา index ที่วันที่ตรงกับวันนี้
+                    today_mask = current_history['Date'].dt.strftime('%Y-%m-%d') == today_str
+                         
+                    if today_mask.any():
+                        # --- กรณี A: มีอยู่แล้ว -> UPDATE แถวเดิม ---
+                        st.info(f"ℹ️ พบข้อมูลวันที่ {today_str} แล้ว กำลังอัปเดตทับ...")
+                        
+                        # ใช้ loc เพื่อแก้ค่าใน rows นั้น
+                        current_history.loc[today_mask, 'My_Total_Value'] = total_value
+                        current_history.loc[today_mask, 'My_Total_Cost'] = total_invest
+                        current_history.loc[today_mask, 'My_Fund_Value'] = fund_value
+                        current_history.loc[today_mask, 'My_Fund_Cost'] = fund_invest
+                        current_history.loc[today_mask, 'My_Stock_Value'] = stock_value
+                        current_history.loc[today_mask, 'My_Stock_Cost'] = stock_invest
+                        final_df = current_history # ใช้ dataframe ที่แก้แล้ว
+                        
+                    else:
+                        # --- กรณี B: ยังไม่มี -> APPEND แถวใหม่ ---
+                        new_row = pd.DataFrame([{
+                            "Date": today_str,
+                            "My_Stock_Value": None, # เว้นว่างไว้รอ update จากหน้า stock
+                            "Strategy_SP500_Value": None,
+                            "SPY_Shares": None,
+                            "My_Stock_Cost": None,
+                            "My_Fund_Cost": fund_invest,   # ✅ บันทึก
+                            "My_Fund_Value": fund_value,   # ✅ บันทึก
+                            "My_Total_Cost": total_invest,   # ✅ บันทึก
+                            "My_Total_Value": total_value    # ✅ บันทึก
+                        }])
+                        new_row['Date'] = pd.to_datetime(new_row['Date'])
+                        final_df = pd.concat([current_history, new_row], ignore_index=True)
+                    
+                    # 3. แปลง Date กลับเป็น string format มาตรฐานก่อน save (กัน error format)
+                    final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
+                    
+                    # 4. บันทึกกลับ
+                    conn.update(worksheet="Portfolio_Hx", data=final_df)
+                    st.success(f"✅ Saved successfully for {today_str}!")
+                    st.cache_data.clear() # ล้าง cache ให้กราฟอัปเดต
+                    
+                except Exception as e:
+                    st.error(f"Update failed: {e}")
+
+    # Display 3 cards
     c1, c2, c3 = st.columns(3)
     with c1: st.markdown(f'<div class="metric-card"><div class="metric-label">💎 Net Worth</div><div class="metric-value">฿ {total_value:,.0f}</div></div>', unsafe_allow_html=True)
     with c2: st.markdown(f'<div class="metric-card"><div class="metric-label">💸 Total Invested</div><div class="metric-value" style="color:#444;">฿ {total_invest:,.0f}</div></div>', unsafe_allow_html=True)
@@ -121,10 +198,11 @@ def show():
 
     st.markdown("---")
 
+    # Display analytic
     col_main, col_side = st.columns([2, 1])
 
     with col_main:
-        # 📊 Donut Chart (สไตล์ใหม่!)
+        # 📊 Donut Chart 
         st.subheader("📊 Portfolio Composition")
         if asset_items:
             donut_df = pd.DataFrame(asset_items)
@@ -166,16 +244,17 @@ def show():
 
             st.altair_chart(chart, use_container_width=True)
 
-        st.markdown("---")
-
-        # Area Chart
-        st.subheader("📈 Wealth Growth")
-        chart_data = pd.DataFrame({
-            "Date": pd.to_datetime(["2024-01-01", "2024-02-01", "2024-03-01", "2024-04-01", "2024-05-01", "2024-06-01"]),
-            "Net Worth": [total_value * 0.5, total_value * 0.6, total_value * 0.7, total_value * 0.8, total_value * 0.9, total_value],
-            "Invested":  [total_invest * 0.8, total_invest * 0.85, total_invest * 0.9, total_invest * 0.95, total_invest, total_invest]
-        })
-        st.area_chart(chart_data.set_index("Date"), color=["#2E8B57", "#B0BEC5"])
+        # Area Chart (History)
+        st.subheader("📈 Wealth Growth (Total)")
+        try:
+            df_history = load_history_data()
+            if not df_history.empty and 'My_Total_Value' in df_history.columns:
+                # dropna() เพื่อไม่ให้กราฟขาดตอนจากข้อมูลที่เป็น None
+                chart_data = df_history[['Date', 'My_Total_Value', 'My_Total_Cost']].dropna().set_index('Date')
+                chart_data.columns = ['Net Worth', 'Invested']
+                st.area_chart(chart_data, color=["#2E8B57", "#B0BEC5"])
+        except Exception as e:
+            st.warning(f"Graph error: {e}")
 
     with col_side:
         st.subheader("💼 Assets Breakdown")
