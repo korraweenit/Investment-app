@@ -165,8 +165,8 @@ def display_Hxchart(rebalance_df):
 
         fig=px.line(plot_df,
             x='Date',
-            y=['myport_%','sp500_%'],
-            color_discrete_map={'myport_%': '#00CC96','sp500_%': '#EF553B',   }              
+            y=['myport_%','sp500_%', 'cost_%'],
+            color_discrete_map={'myport_%': '#00CC96','sp500_%': '#EF553B', "cost_%" : "#4B4949" }              
         )
         fig.add_hline(y=0, line_dash="dash", line_color="gray")
         st.plotly_chart(fig, use_container_width=True)
