@@ -14,7 +14,7 @@ import utils
 # ===========================
 # DATA 
 # ===========================
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=600)
 def load_data():
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(worksheet="rebalance", skiprows=14)

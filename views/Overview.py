@@ -137,7 +137,7 @@ def show():
         st.markdown("### 🚀 Portfolio Overview")
     with col_head2:
         # ปุ่มกดอัปเดต 
-        if st.button("💾 Update "):
+        if st.button("💾 Update Data"):
             with st.spinner("Saving Total to History..."):
                 try:
                     conn = st.connection("gsheets", type=GSheetsConnection)
