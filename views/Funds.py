@@ -1,13 +1,48 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import plotly.express as px
+import altair as alt
 from streamlit_gsheets import GSheetsConnection
 
 @st.cache_data(ttl=600)
 def load_data():
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(worksheet="Fund summary", skiprows=5)
+    df=df.head(5)
     return df
+
+@st.cache_data(ttl=600)
+def load_Fund_Hx():
+    conn = st.connection("gsheets", type=GSheetsConnection)
+    df = conn.read(worksheet="Fund summary", skiprows=15)
+    df['Date'] = pd.to_datetime(df['Date'], format='%m/%Y', errors='coerce')
+    df['Date'] = df['Date'].ffill()
+    return df
+
+def display_graph():
+    hx_df= load_Fund_Hx()
+    hx_df['%']=hx_df['%']*100
+    all_funds=hx_df['Name'].unique().tolist()
+
+    selected_funds = st.multiselect(
+    "เลือกกองทุนที่ต้องการแสดง:",
+    options=all_funds,
+    default=all_funds)
+    
+    filtered_df = hx_df[hx_df['Name'].isin(selected_funds)]
+    chart = alt.Chart(filtered_df).mark_line(point=False).encode(
+        x=alt.X('Date', title='วันที่', axis=alt.Axis(format='%b/%Y')), # Format วันที่
+        y=alt.Y('%', title='ผลตอบแทน (%)', scale=alt.Scale(zero=False)), # zero=False เพื่อให้กราฟไม่เริ่มที่ 0 (เห็นความชันชัดขึ้น)
+        color=alt.Color('Name', title='กองทุน', legend=alt.Legend(orient='bottom')), # สีแยกตามชื่อกองทุน
+        tooltip=[alt.Tooltip('Date', format='%b %Y', title='Date'), 
+                'Name', 
+                alt.Tooltip('%', format='.2f', title='Return (%)')] # เอาเมาส์ชี้แล้วขึ้นเลข
+    ).properties(
+        height=400
+    ).interactive() # 🛠️ แถม: ใส่ interactive ให้ซูมเข้าออกได้
+
+    st.altair_chart(chart, use_container_width=True)
 
 def show():
     st.markdown("""
@@ -307,7 +342,8 @@ def show():
     # Load data
     df = load_data()
     df['%'] = df['%'] * 100
-    
+    df['Portion']=df['Portion']*100
+
     total_val = df.loc[4, 'Value']
     total_cost = df.loc[4, 'Invest']
     total_pl = df.loc[4, 'P/L']
@@ -322,6 +358,9 @@ def show():
         'NDQ100': {'icon': '🚀', 'color_class': 'fund-icon-green'},
         'S&P500': {'icon': '🗽', 'color_class': 'fund-icon-green'},
     }
+
+    # Prepare Data for Hx graph
+    hx_df=load_Fund_Hx()
     
     # ===== UI Section =====
     
@@ -347,12 +386,12 @@ def show():
             </div>
         </div>
     """, unsafe_allow_html=True)
-
+    
     # 2. Section Header
     current_month = pd.Timestamp.now().strftime('%b %Y')
     st.markdown(f"""
         <div class="section-header">
-            <h2 class="section-title">📊 Monthly Investment Record</h2>
+            <h2 class="section-title"> Monthly Investment Record</h2>
             <div class="month-badge">{current_month}</div>
         </div>
     """, unsafe_allow_html=True)
@@ -406,14 +445,7 @@ def show():
                 <div class="graph-button-container">
         """, unsafe_allow_html=True)
         
-        # Streamlit button (อยู่นอก HTML)
-        if st.button(f"📈 Show Graph", key=f"graph_{item['Name']}", type="secondary", use_container_width=False):
-            st.session_state[f'show_graph_{item["Name"]}'] = True
-            # TODO: คุณจะเขียน logic แสดงกราฟที่นี่
-            st.info(f"กำลังแสดงกราฟของ {item['Name']}...")
-        
-        st.markdown("""
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
+    # show graph
+    st.subheader("📈 Compare Fund Performance")
+    display_graph()
+    

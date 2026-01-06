@@ -25,7 +25,4 @@ with tab2:
         st.info("💡 อย่าลืมแก้ไฟล์ us_stock.py ให้มี def show(): ครอบโค้ดไว้นะครับ")
 
 with tab3:
-    try:
-        Funds.show()
-    except Exception as e:
-        st.warning("หน้านี้กำลังพัฒนาครับ (Waiting for Thai Funds code)")
+    Funds.show()
