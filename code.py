@@ -1,22 +1,30 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
-st.subheader("Portfolio Comparison (P/E Ratio)")
+st.set_page_config(page_title="Med-Tech Analyst", layout="wide")
+uploaded_file = st.sidebar.file_uploader("Upload your CSV", type="csv")
+if uploaded_file is not None:
+    df=pd.read_csv(uploaded_file)
+    st.dataframe(df.head(10))
 
-# สร้างข้อมูล: หุ้น 3 ตัว กับค่า P/E ของมัน
-# สังเกตว่าเรากำหนด index เป็นชื่อหุ้น (A, B, C) ไม่ใช่ตัวเลข 0,1,2
-pe_data = pd.DataFrame(
-    [15.5, 22.1, 8.5],
-    index=['Stock A', 'Stock B', 'Stock C'], 
-    columns=['P/E Ratio']
-)
+    if 'Date' in df.columns:
+        df['Date']=pd.to_datetime(df['Date'])
+        df = df.set_index('Date')
 
-st.bar_chart(pe_data)
+    st.subheader("Line chart")
+    value= st.selectbox("select value",df.columns)
+    chart_df=df[value]
+    st.line_chart(chart_df)
 
-st.subheader("Hospital Admissions by Department")
-dept_data = pd.DataFrame(
-    [[120, 45, 80],[1,1,1]],
-    index=['OPD', 'ER', 'IPD'],
-    columns=['Patients','Doctor']
-)
-st.bar_chart(dept_data)
+    st.subheader("Interactive Histogram")
+    fig, ax = plt.subplots()
+    value2= st.selectbox("select hist_value",df.columns)
+    Histogram_df=df[value2]
+
+    bins_v=st.slider("bins",5,100,30)
+
+    ax.hist(Histogram_df, bins=bins_v, alpha=0.6, label=value2, color='green')
+    st.pyplot(fig)
+else:
+    st.warning('Please upload data', icon="⚠️")
