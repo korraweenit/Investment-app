@@ -3,6 +3,7 @@ import pandas as pd
 import altair as alt
 from datetime import datetime
 from streamlit_gsheets import GSheetsConnection
+from views import pyramid
 
 # -------------------------------------------------------
 # 1. Load & Clean Data
@@ -199,7 +200,7 @@ def show():
     st.markdown("---")
 
     # Display analytic
-    col_main, col_side = st.columns([2, 1])
+    col_main, col_side = st.columns([3, 3])
 
     with col_main:
         # 📊 Donut Chart 
@@ -257,30 +258,41 @@ def show():
             st.warning(f"Graph error: {e}")
 
     with col_side:
-        st.subheader("💼 Assets Breakdown")
+        st.subheader("💼 Allocation")
         
-        for asset in asset_items:
-            is_gain = asset['gain_val'] >= 0
-            color_cls = "gain-text" if is_gain else "loss-text"
-            arrow = "▲" if is_gain else "▼"
-            sign = "+" if is_gain else ""
-            
-            st.markdown(f"""
-            <div class="asset-item">
-                <div style="display:flex; align-items:center;">
-                    <div style="font-size:24px; margin-right:12px; background:#f0f2f5; padding:8px; border-radius:50%; width:45px; text-align:center;">
-                        {asset['icon']}
+        # สร้างปุ่มสลับ (Switch)
+        view_mode = st.radio(
+            "Select View:", 
+            options=["Asset", "Pyramid"], 
+            horizontal=True, 
+            label_visibility="collapsed" # ซ่อน Label เพื่อความสวยงาม
+        )
+
+        if view_mode == "Asset":
+            for asset in asset_items:
+                is_gain = asset['gain_val'] >= 0
+                color_cls = "gain-text" if is_gain else "loss-text"
+                arrow = "▲" if is_gain else "▼"
+                sign = "+" if is_gain else ""
+                
+                st.markdown(f"""
+                <div class="asset-item">
+                    <div style="display:flex; align-items:center;">
+                        <div style="font-size:24px; margin-right:12px; background:#f0f2f5; padding:8px; border-radius:50%; width:45px; text-align:center;">
+                            {asset['icon']}
+                        </div>
+                        <div>
+                            <div class="asset-name">{asset['name']}</div>
+                            <div class="asset-badge">{asset['percent']:.1f}% Port</div>
+                        </div>
                     </div>
                     <div>
-                        <div class="asset-name">{asset['name']}</div>
-                        <div class="asset-badge">{asset['percent']:.1f}% Port</div>
+                        <div class="asset-val">฿ {asset['value']:,.0f}</div>
+                        <div class="{color_cls}">
+                            {arrow} {sign}{asset['gain_val']:,.0f} ({asset['gain_pct']:.1f}%)
+                        </div>
                     </div>
                 </div>
-                <div>
-                    <div class="asset-val">฿ {asset['value']:,.0f}</div>
-                    <div class="{color_cls}">
-                        {arrow} {sign}{asset['gain_val']:,.0f} ({asset['gain_pct']:.1f}%)
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+        else:
+            pyramid.show_pyramid()
