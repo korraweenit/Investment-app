@@ -29,6 +29,7 @@ def load_transaction_history():
         df=conn.read(worksheet='Buying track',skiprows=6)
         df['Date']=pd.to_datetime(df['Date'],format='%d/%m/%Y')
         df=df[df['Buy/Sell']=='Buy']
+        df=df[df['Net Value (THB)']!=0]
         df = df.sort_values('Date')
         return df
     except Exception as e:
