@@ -19,7 +19,6 @@ def load_data():
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(worksheet="rebalance", skiprows=14)
     df=df[~df['US stock'].str.lower().str.contains('total')]
-    df=df.iloc[:-1]
     return df
 
 # sp500
