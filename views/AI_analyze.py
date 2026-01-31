@@ -4,7 +4,7 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
 # 1. Config API Key (ควรซ่อนใน st.secrets ถ้าจะ deploy แต่วันนี้ใส่ตรงๆ หรือใช้ st.secrets ไปก่อนได้ครับ)
-API_KEY = 'AIzaSyDEEoFjBMCx5kTer5XCMCj-dh9v_bPzcm0' 
+API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=API_KEY) 
 
 def ask_warren_buffett(portfolio_data_text):
