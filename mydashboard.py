@@ -2,7 +2,7 @@ import streamlit as st
 from views import Overview
 from views import US_stocks
 from views import Funds
-
+from views import AI_analyze
 
 st.set_page_config(
     page_title="Wealth Command Center",
@@ -13,7 +13,7 @@ st.set_page_config(
 
 st.title("🏥 Wealth Command Center")
 
-tab1, tab2, tab3 = st.tabs(["Home","US Stocks", "Funds"])
+tab1, tab2, tab3,tab4 = st.tabs(["Home","US Stocks", "Funds","🤖 AI Advisor"])
 
 with tab1:
     Overview.show()
@@ -26,3 +26,6 @@ with tab2:
 
 with tab3:
     Funds.show()
+
+with tab4:
+    AI_analyze.show()
