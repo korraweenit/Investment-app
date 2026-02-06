@@ -3,15 +3,18 @@ import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
-# 1. Config API Key (ควรซ่อนใน st.secrets ถ้าจะ deploy แต่วันนี้ใส่ตรงๆ หรือใช้ st.secrets ไปก่อนได้ครับ)
+# ===========================
+# AI function
+# ===========================  
+#Config API Key (ควรซ่อนใน st.secrets ถ้าจะ deploy แต่วันนี้ใส่ตรงๆ หรือใช้ st.secrets ไปก่อนได้ครับ)
 API_KEY = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=API_KEY) 
 
-def ask_warren_buffett(portfolio_data_text):
+def ask_warren_buffett(user_input, history_messages, uploaded_file=None, portfolio_df=None):
     """
-    รับข้อมูลพอร์ต (Text) -> ส่งให้ AI วิจารณ์ -> คืนค่าเป็นคำแนะนำ
+    ฟังก์ชันเดียวจบ: รับคำถาม + ประวัติ + ไฟล์ -> ส่งคืนคำตอบสไตล์ปู่
     """
-    # 1. สร้าง Persona (System Instruction)
+    # A. สร้าง Persona
     buffett_persona = """
     Act as: "The Modern Intelligent Investor" (นักลงทุน VI ยุคใหม่ ผู้ยึดมั่นในหลักการแต่ทันโลก)
 
@@ -44,84 +47,68 @@ def ask_warren_buffett(portfolio_data_text):
 
     **Initialization:**
     * เริ่มต้นด้วยการแนะนำตัวสั้นๆ ตามคาแรคเตอร์ และถามฉันว่า: **"วางพอร์ตของคุณลงบนโต๊ะสิครับ... บอกชื่อหุ้น, สัดส่วน (%), และราคาต้นทุนของคุณมา ผมจะดูให้ว่าคุณกำลัง 'ลงทุน' หรือ 'เล่นพนัน'"**
-    """
-    
-    model = genai.GenerativeModel(
-        'gemini-2.5-flash',
-        system_instruction=buffett_persona
-    )
-    
-    # 2. สร้าง Prompt
-    prompt = f"นี่คือหน้าตาพอร์ตการลงทุนของผมครับ ช่วยวิจารณ์หน่อย:\n\n{portfolio_data_text}"
-    
-    # 3. ยิง API
+        """
+
     try:
-        response = model.generate_content(prompt)
+        # B. เตรียม Prompt
+        # แปลงประวัติการคุยเป็น Text ก้อนเดียว
+        history_text = "\n".join([f"{m['role']}: {m['content']}" for m in history_messages])
+        
+        prompt_parts = []
+        
+        if portfolio_df is not None and not portfolio_df.empty:
+            # แปลงตารางเป็น String เพื่อให้ AI อ่านรู้เรื่อง
+            port_str = portfolio_df.to_string(index=False)
+            prompt_parts.append(f"📊 ข้อมูลพอร์ตปัจจุบันของผู้ใช้ (Live Data):\n{port_str}\n")
+            prompt_parts.append("(กรุณาใช้ข้อมูลข้างบนนี้ประกอบการวิเคราะห์ หากผู้ใช้ถามถึงพอร์ต)")
+
+        # ถ้ามีไฟล์ -> แนบไฟล์
+        if uploaded_file:
+            bytes_data = uploaded_file.getvalue()
+            file_part = {"mime_type": uploaded_file.type, "data": bytes_data}
+            prompt_parts.append("นี่คือเอกสารแนบ:")
+            prompt_parts.append(file_part)
+        
+        # ใส่บริบท
+        prompt_parts.append(f"ประวัติการสนทนา:\n{history_text}")
+        prompt_parts.append(f"คำถามล่าสุด: {user_input}")
+        prompt_parts.append("คำตอบของ Warren Buffett:")
+
+        # C. เรียก Model
+        model = genai.GenerativeModel(
+            'gemini-2.5-flash',
+            system_instruction=buffett_persona
+        )
+        
+        response = model.generate_content(prompt_parts)
         return response.text
+
     except Exception as e:
         return f"ขออภัย ปู่ Buffett หลับอยู่ (Error: {e})"
 
-def inject_custom_css():
-    st.markdown("""
-    <style>
-        /* สไตล์จดหมายแบบ Premium */
-        .advisor-card {
-            background-color: #fdfbf7; /* สีครีมกระดาษ */
-            border: 1px solid #e8e1d5;
-            border-radius: 15px;
-            padding: 40px;
-            font-family: 'Sarabun', 'Georgia', serif; /* ฟอนต์อ่านง่ายดูแพง */
-            color: #2c3e50;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            margin-top: 20px;
-            position: relative;
-        }
-        .advisor-header {
-            display: flex;
-            align-items: center;
-            border-bottom: 2px solid #1a5d3a; /* เส้นเขียวเข้ม */
-            padding-bottom: 20px;
-            margin-bottom: 25px;
-        }
-        .advisor-avatar {
-            font-size: 60px;
-            margin-right: 20px;
-            background: #e8f5e9;
-            width: 90px; height: 90px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 50%;
-            border: 3px solid #1a5d3a;
-        }
-        .advisor-name {
-            font-size: 24px;
-            font-weight: 800;
-            color: #1a5d3a;
-            margin-bottom: 5px;
-        }
-        .advisor-role {
-            font-size: 14px;
-            color: #868e96;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .advisor-body {
-            font-size: 16px;
-            line-height: 1.8;
-            color: #343a40;
-        }
-        .quote-icon {
-            font-size: 40px; color: #ced4da; opacity: 0.5; position: absolute; right: 40px; top: 40px;
-        }
-        
-        /* การ์ดสถิติเล็กๆ */
-        .stat-badge {
-            background: white; border: 1px solid #eee; 
-            padding: 10px 15px; border-radius: 8px; 
-            text-align: center; font-size: 13px; font-weight: 600; color: #555;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-        }
-    </style>
-    """, unsafe_allow_html=True)
+def analyze_uploaded_file(uploaded_file, prompt_text):
+    """
+    รับไฟล์ (PDF/Image) -> ส่งให้ AI อ่าน -> คืนค่าคำตอบ
+    """
+    # 1. อ่านไฟล์เป็น Bytes
+    bytes_data = uploaded_file.getvalue()
+
+    # 2. กำหนดประเภทไฟล์ (MIME Type)
+    mime_type = uploaded_file.type # เช่น 'image/png' หรือ 'application/pdf'
+    
+    file_part = {
+        "mime_type": mime_type,
+        "data": bytes_data
+    }
+    
+    model = genai.GenerativeModel('gemini-2.5-flash')
+    try:
+        # ส่งไปเป็น List: [ข้อความคำสั่ง, ข้อมูลไฟล์]
+        response = model.generate_content([prompt_text, file_part])
+        return response.text
+    except Exception as e:
+        return f"เกิดข้อผิดพลาด: {e}"
+
 # ===========================
 # Load data
 # ===========================  
@@ -142,7 +129,7 @@ def load_portfolio_data():
 def load_pyramid_data():
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(worksheet="rebalance", skiprows=1)
-    df = df.iloc[:4, 11:19]
+    df = df.iloc[:3, 11:19]
     df.columns = ['Pyramid', 'Asset', 'Invest', 'Value', 'GainLoss', 'Portion (%)', 'Target(%)']
     df['GainLoss']= df['GainLoss']*100
     df['Portion (%)']=df['Portion (%)']*100
@@ -152,66 +139,134 @@ def load_pyramid_data():
 # ===========================
 # MAIN APP
 # ===========================
+def inject_custom_css():
+    st.markdown("""
+    <style>
+        /* สไตล์จดหมายแบบ Premium */
+        .advisor-card {
+            background-color: #fdfbf7;
+            border: 1px solid #e8e1d5;
+            border-radius: 15px;
+            padding: 30px; /* ลดขอบลงนิดนึงจาก 40 */
+            font-family: 'Sarabun', 'Thonburi', 'Georgia', serif; /* เพิ่มฟอนต์ไทย */
+            color: #2c3e50;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            margin-top: 20px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        /* ... (Header สไตล์เดิม ไม่ต้องแก้) ... */
+        .advisor-header {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #1a5d3a; /* เส้นบางลงหน่อย */
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .advisor-avatar {
+            font-size: 50px;
+            margin-right: 15px;
+            background: #e8f5e9;
+            width: 70px; height: 70px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%;
+            border: 2px solid #1a5d3a;
+        }
+        .advisor-name { font-size: 20px; font-weight: 800; color: #1a5d3a; margin: 0; }
+        .advisor-role { font-size: 12px; color: #868e96; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* 🔥 จุดที่แก้: ปรับ Body ให้แน่นขึ้น */
+        .advisor-body {
+            font-size: 16px;
+            line-height: 1.5; /* ลดจาก 1.8 -> 1.5 (ชิดขึ้น) */
+            color: #343a40;
+            white-space: pre-line; /* ใช้ pre-line แทน pre-wrap (ช่วยยุบช่องว่างเกินจำเป็น) */
+        }
+        
+        /* แถม: ทำให้ List (รายการข้อๆ) ชิดขึ้นด้วย */
+        .advisor-body ul, .advisor-body ol { margin-top: 5px; margin-bottom: 5px; }
+        .advisor-body li { margin-bottom: 5px; }
+
+        .quote-icon {
+            font-size: 40px; color: #ced4da; opacity: 0.3; position: absolute; right: 30px; top: 30px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+def render_buffett_card(text):
+    html = f"""
+    <div class="advisor-card">
+        <div class="quote-icon">❝</div>
+        <div class="advisor-header">
+            <div class="advisor-avatar">🎩</div>
+            <div>
+                <div class="advisor-name">Warren Buffett (AI)</div>
+                <div class="advisor-role">Legendary Value Investor</div>
+            </div>
+        </div>
+        <div class="advisor-body">{text}</div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
 def show():
     inject_custom_css()
-    
-    st.title("🧠 Wealth  Advisor")
-    st.caption("AI-Powered Portfolio Analysis")
-    
-    # โหลดข้อมูล
     df = load_pyramid_data()
-    
-    if df.empty:
-        st.error("⚠️ ไม่พบข้อมูลพอร์ต (กรุณาเช็คหน้า Pyramid ก่อนครับ)")
-        return
-
-    # --- ส่วนแสดงผลบน (Dashboard เล็กๆ) ---
-    col_info, col_action = st.columns([1.5, 1])
-    
-    with col_info:
-        st.markdown("##### Portfolio Overview")
-        # สรุปตัวเลขให้ดูหน่อย
-        total_val = df['Value'].sum()
-        top_layer = df.sort_values(by='Portion (%)', ascending=False).iloc[0]['Pyramid']
+    # Sidebar: ส่วนอัปโหลดและควบคุม
+    with st.sidebar:
+        st.image("https://cdn-icons-png.flaticon.com/512/4205/4205906.png", width=80)
+        st.title("Wealth Advisor")
         
-        c1, c2, c3 = st.columns(3)
-        c1.markdown(f"<div class='stat-badge'>Total Value<br><span style='color:#1a5d3a; font-size:16px;'>฿{total_val/1000:,.1f}k</span></div>", unsafe_allow_html=True)
-        c2.markdown(f"<div class='stat-badge'>Top Allocation<br><span style='color:#e67e22; font-size:16px;'>{top_layer}</span></div>", unsafe_allow_html=True)
-        c3.markdown(f"<div class='stat-badge'>Assets<br><span style='color:#2980b9; font-size:16px;'>{len(df)} รายการ</span></div>", unsafe_allow_html=True)
+        if not df.empty:
+            st.success(f"✅ Data Loaded: {len(df)} รายการ")
+            with st.expander("แอบดูข้อมูล (Raw Data)"):
+                st.dataframe(df, hide_index=True)
+        else:
+            st.warning("⚠️ ยังไม่พบข้อมูลพอร์ต")
         
-        with st.expander("🔍 ดูข้อมูลดิบที่ส่งให้ AI"):
-            st.dataframe(df, use_container_width=True, hide_index=True)
-
-    with col_action:
-        st.markdown("#### 💡AI Consultant")
-        st.write("Get personalized advice based on Value Investing principles.")
+        st.markdown("---")
+        uploaded_file = st.file_uploader("📂 Upload Portfolio / Financial Stmt.", type=["pdf", "png", "jpg"])
         
-        analyze_btn = st.button("🎩Analyze Portfolio", type="primary", use_container_width=True)
+        if uploaded_file:
+            st.success(f"Loaded: {uploaded_file.name}")
+            if uploaded_file.type in ["image/png", "image/jpeg"]:
+                st.image(uploaded_file, caption="Preview", use_column_width=True)
 
-    st.write("---")
+        st.markdown("---")
+        if st.button("🗑️ Clear History"):
+            st.session_state.messages = []
+            st.rerun()
 
-    # --- ส่วนแสดงผลลัพธ์ (Letter) ---
-    if analyze_btn:
-        with st.spinner("⏳ กำลังวิเคราะห์..."):
-            advice = ask_warren_buffett(df)
+    # Main Area: Chat Interface
+    st.markdown("#### 💬 Consult with the Legend")
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "สวัสดีครับ... การลงทุนคือการวิ่งมาราธอน ไม่ใช่การวิ่งสปรินต์ วันนี้มีพอร์ตหรือหุ้นตัวไหนอยากให้ผมช่วยวิเคราะห์ไหมครับ?"}
+        ]
+
+    # Loop แสดงข้อความเก่า
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            # ข้อความฝั่งเรา (แสดงแบบปกติ หรือ Chat bubble)
+            with st.chat_message("user"):
+                st.write(msg["content"])
+        else:
+            # ข้อความฝั่ง AI (แสดงแบบการ์ดจดหมายสุดหรู)
+            render_buffett_card(msg["content"])
+
+    # Input รับข้อความใหม่
+    if user_input := st.chat_input("พิมพ์คำถาม หรือขอคำแนะนำได้เลย..."):
+        # 1. แสดงข้อความเรา
+        st.chat_message("user").write(user_input)
+        st.session_state.messages.append({"role": "user", "content": user_input})
+
+        # 2. AI คิดและแสดงผล
+        with st.spinner("Writing advice..."):
+            ai_reply = ask_warren_buffett(user_input, st.session_state.messages, uploaded_file,portfolio_df=df)
             
-            # แสดงผลแบบการ์ดสวยงาม
-            st.markdown(f"""
-            <div class="advisor-card">
-                <div class="quote-icon">❝</div>
-                <div class="advisor-header">
-                    <div class="advisor-avatar">🎩</div>
-                    <div>
-                        <div class="advisor-name">Warren Buffett (AI)</div>
-                        <div class="advisor-role">Legendary Value Investor</div>
-                    </div>
-                </div>
-                <div class="advisor-body">
-                    {advice}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # แสดงการ์ดจดหมาย
+            render_buffett_card(ai_reply)
             
-    else:
-        # State เริ่มต้น (ยังไม่กด)
-        st.info("👋 ผมพร้อมให้คำแนะนำครับ กดปุ่มข้างบนได้เลย ไม่ต้องเกรงใจ")
+            # บันทึก
+            st.session_state.messages.append({"role": "assistant", "content": ai_reply})

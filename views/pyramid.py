@@ -8,7 +8,7 @@ from streamlit_gsheets import GSheetsConnection
 def load_pyramid_data():
     conn = st.connection("gsheets", type=GSheetsConnection)
     df = conn.read(worksheet="rebalance", skiprows=1)
-    df = df.iloc[:4, 11:19]
+    df = df.iloc[:3, 11:19]
     df.columns = ['Pyramid', 'Asset', 'Invest', 'Value', 'GainLoss', 'Portion (%)', 'Target(%)']
     return df
 
@@ -17,8 +17,7 @@ def load_pyramid_data():
 # -------------------------------------------------------
 # กำหนดสีให้ตรงกับ Theme (High-risk=แดง, Foundation=เขียว)
 PYRAMID_THEME = {
-    "High-risk":  {"color": "#e03131", "width": "25%"},  # แดงเข้ม (ยอด)
-    "Growth":     {"color": "#fd7e14", "width": "50%"},  # ส้ม
+    "Growth":     {"color": "#e03131", "width": "50%"},  # แดง
     "Core":       {"color": "#fcc419", "width": "75%"},  # เหลืองทอง
     "Foundation": {"color": "#37b24d", "width": "100%"}  # เขียว (ฐาน)
 }
@@ -27,7 +26,7 @@ PYRAMID_THEME = {
 # 🏗️ RENDER FUNCTION
 # -------------------------------------------------------
 def render_pyramid_from_db(df):
-    layer_order = ["High-risk", "Growth", "Core", "Foundation"]
+    layer_order = [ "Growth", "Core", "Foundation"]
     
     # ⚠️ สังเกต: ผมขยับ <style> และ <div> ให้ชิดซ้าย ไม่ให้มีเว้นวรรคข้างหน้า
     html_content = """
